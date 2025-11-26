@@ -14,30 +14,39 @@ handled by computers. What is needed for that is trials to show the physiologica
 is out of the scope of a school project, but it is possible to show that standard control approaches (i.e., LQR) would work fine on realistic inputs provided known relationships.
 
 There are a few puzzle pieces to this control system:
-  Input                           Blood flow waveform
-  Output                          Blood pressure waveform
-  Live State Estimation           Signal processing & analysis (blood pressure & flow)
-  Actuators                       Cardiac drugs
+## Major BP Regulation Model Components
+
+| Project Component      | Approach                                      |
+|------------------------|-----------------------------------------------|
+| Input                  | Blood flow waveform                           |
+| Output                 | Blood pressure waveform                       |
+| Live State Estimation  | Signal processing & analysis (blood pressure & flow) |
+| Actuators              | Cardiac drugs                                 |
 
 The system as a whole has more parts (sensors, database, data relay etc.), but these issues are routine. This project will include a database for storing results, sensors to use as 
 inputs alongside simulated inputs (heart rate, electrocardiogram), and a dashboard. These are largely side-tasks, however.
 
 For now the structure of the files looks like this:
-  config.py                       parameters/constants to be tuned, imported in all other files
-  pump.py                         generates input blood flow
-  windkessel.py                   calculates bp waveform based on blood flow and a three element Windkessel (Za, R, C)
-  signal_process.py               estimates (Za, R, C) as if unknown with signal processing from windkessel.py
-  control.py                      controller - takes in processed BP waveform from signal_process.py and controls drug infusion
-  pk.py                           pharmacokinetic model - calculates drug concentration in plasma over time with a two compartment model based on infusion
-  pd.py                           pharmacodynamic model - calculated the effect of drug concentration levels on Windkessel parameters
+## Project Structure
+
+| File               | Purpose                                                                 |
+|--------------------|-------------------------------------------------------------------------|
+| `config.py`        | Parameters/constants to be tuned, imported in all other files           |
+| `pump.py`          | Generates input blood flow                                              |
+| `windkessel.py`    | Calculates BP waveform based on blood flow and a three‑element Windkessel (Za, R, C) |
+| `signal_process.py`| Estimates (Za, R, C) as if unknown with signal processing from windkessel.py |
+| `control.py`       | Controller – takes in processed BP waveform from signal_process.py and controls drug infusion |
+| `pk.py`            | Pharmacokinetic model – calculates drug concentration in plasma over time with a two‑compartment model based on infusion |
+| `pd.py`            | Pharmacodynamic model – calculates the effect of drug concentration levels on Windkessel parameters |
+
 
 If this first cut succeeds the following would be nice:
-  Higher element Windkessel (say 5 elements)
-  Simulated effect of drugs on input blood flow (unintended feedback)
-  Simulated effects of a large profile of cardiac drugs with mixed effects on both the heart and vascular system
-  Blood flow (CO) control rather than only vasocative control of SVR
-  Predifined scenario testing
-  Reliability and robustness testing
+  - Higher element Windkessel (say 5 elements)
+  - Simulated effect of drugs on input blood flow (unintended feedback)
+  - Simulated effects of a large profile of cardiac drugs with mixed effects on both the heart and vascular system
+  - Blood flow (CO) control rather than only vasocative control of SVR
+  - Predifined scenario testing
+  - Reliability and robustness testing
 
 It will likely be wise to test a variety of plausible relationships between variables since actual relationships seem to be as of yet mysterious to the medical and academic community.
 Either way, the main point is to show that standard approaches are not acutely sensitive to the exact nature of the cardiovascular system; i.e. once the variables are pinned down and
