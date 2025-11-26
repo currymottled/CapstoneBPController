@@ -29,15 +29,16 @@ inputs alongside simulated inputs (heart rate, electrocardiogram), and a dashboa
 For now the structure of the files looks like this:
 ## Project Structure
 
-| File               | Purpose                                                                 |
-|--------------------|-------------------------------------------------------------------------|
-| `config.py`        | Parameters/constants to be tuned, imported in all other files           |
-| `pump.py`          | Generates input blood flow                                              |
-| `windkessel.py`    | Calculates BP waveform based on blood flow and a three‑element Windkessel (Za, R, C) |
-| `signal_process.py`| Estimates (Za, R, C) as if unknown with signal processing from windkessel.py |
-| `control.py`       | Controller – takes in processed BP waveform from signal_process.py and controls drug infusion |
-| `pk.py`            | Pharmacokinetic model – calculates drug concentration in plasma over time with a two‑compartment model based on infusion |
-| `pd.py`            | Pharmacodynamic model – calculates the effect of drug concentration levels on Windkessel parameters |
+| File               | Purpose                                                                                                                 |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `config.py`        | Simulation setup, parameters/constants to be tuned, imported in all other files                                         |
+| `pump.py`          | Generates input blood flow                                                                                              |
+| `windkessel.py`    | Calculates BP waveform based on blood flow and a three‑element Windkessel (Za, R, C)                                    |
+| `signal_process.py`| Estimates (Za, R, C) as if unknown with signal processing from windkessel.py                                            |
+| `control.py`       | Controller – takes in processed BP waveform from signal_process.py and controls drug infusion                           |
+| `pk.py`            | Pharmacokinetic model – calculates drug concentration in plasma over time with a two‑compartment model based on infusion|
+| `pd.py`            | Pharmacodynamic model – calculates the effect of drug concentration levels on Windkessel parameters                     |
+| `main.py`          | Gathers and prints/plots results                                                                                        |                                                          
 
 
 If this first cut succeeds the following would be nice:
