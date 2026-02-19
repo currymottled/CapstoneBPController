@@ -12,11 +12,8 @@ state_vector = np.column_stack ((
         MAP_est
 ))
                                 
-
-
-
+# create a step state vector 
+step_state_vector = 
 
 # Quadratic cost: squared deviation from target MAP
 cost_function = (MAP_est[-1] - target_map)**2
-
-# creating a new state vector 
