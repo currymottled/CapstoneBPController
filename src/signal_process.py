@@ -71,7 +71,7 @@ class BPProcessor:
         else:
             signal_to_use = self.filtered
 
-        min_distance = self.samples_per_beat
+        min_distance = int(0.5 * self.samples_per_beat)
 
         self.peaks, _ = find_peaks(signal_to_use, distance=min_distance)
         self.troughs, _ = find_peaks(-signal_to_use, distance=min_distance)

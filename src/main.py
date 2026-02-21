@@ -79,6 +79,10 @@ peaks, troughs = bp.detect_beats(P)
 
 print("Number of peaks:", len(peaks))
 print("Number of troughs:", len(troughs))
+print("dt:", dt)
+print("T:", T)
+print("N:", N)
+print("t[-1]:", t[-1])
 
 if len(troughs) >= 2:
     MAP_beats = bp.estimate_map(P)
@@ -86,7 +90,6 @@ if len(troughs) >= 2:
 else:
     MAP_beats = np.array([])
     beat_indices = np.array([])
-
 
 # =====================================
 # 5️⃣ Plot Estimated MAP Only
