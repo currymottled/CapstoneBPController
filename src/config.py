@@ -9,6 +9,15 @@ t  = np.arange(N) * dt      # time vector in seconds
 # Control Parameters
 starting_map = 70 # initial mean arterial pressure
 target_map = 80   # target mean arterial pressure mmHg
+Q = np.diag([      # state penalty matrix
+    1.0,
+    1.0,
+    100.0
+])
+R_lqr = np.diag([  # control penalty matrix
+    0.1,
+    0.1
+])
 
 # Pump Parameters (input blood flow Qin)
 HR = 75/60                        # heart beats per second not minute

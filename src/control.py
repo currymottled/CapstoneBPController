@@ -1,30 +1,18 @@
 import numpy as np
 from scipy.linalg import solve_discrete_are
 from config import *
-from state_space import A, B
 
 
-# Cost function matrices
+def compute_lqr_gain(A, B, Q, R): # A & B computed via compute_state_space, Q & R from config
 
-Q = np.diag([
-    1.0,
-    1.0,
-    100.0
-])
+    P = solve_discrete_are(A, B, Q, R)
+    K = np.linalg.inv(B.T @ P @ B + R) @ (B.T @ P @ A)
 
-R_lqr = np.diag([
-    0.1,
-    0.1
-])
-
-# Riccati
-P_lqr = solve_discrete_are(A, B, Q, R_lqr)
-K = np.linalg.inv(B.T @ P_lqr @ B + R_lqr) @ (B.T @ P_lqr @ A)
-
+    return K
 
 # Beat synchronous control function
 
-def run_controller(C1_phe, C1_nic, MAP_beats, beat_indices):
+def run_controller(C1_phe, C1_nic, MAP_beats, beat_indices, K):
     """
     Beat-synchronous LQR controller.
 

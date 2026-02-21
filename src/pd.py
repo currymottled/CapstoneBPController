@@ -1,5 +1,4 @@
 from config import *
-from pk import C1_phe, C1_nic
 import numpy as np
 
 def compute_R(C1_phe, C1_nic):
