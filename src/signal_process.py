@@ -13,7 +13,7 @@ class BPProcessor:
         self.fs = sampling_rate
         self.hr = heart_rate
 
-        self.beat_interval_sec = 60.0 / self.hr
+        self.beat_interval_sec = 1.0 / self.hr
         self.samples_per_beat = int(self.fs * self.beat_interval_sec)
 
         self._filter_coeffs = None

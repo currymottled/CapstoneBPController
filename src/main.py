@@ -2,25 +2,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from config import *
-from pump import Qin, HR
+from pump import Qin
 from pk import update_pk_phe, update_pk_nic
 from pd import compute_R
 from windkessel import initialize_windkessel, update_windkessel
 from state_space import compute_state_space
-from control import compute_lqr_gain, run_controller
+from control import compute_lqr_gain
 from signal_process import BPProcessor
 
 
 # =====================================
-# Compute Linear Model + LQR Gain
+# 1️⃣ Linear Model + LQR Gain
 # =====================================
 
-A, B = compute_state_space()   # linearize around baseline
-K = compute_lqr_gain(A, B, Q, R_lqr) # Q & R state & control penalty matrices in config
+A, B = compute_state_space()
+K = compute_lqr_gain(A, B, Q, R_lqr)
 
 
 # =====================================
-# Allocate State Arrays
+# 2️⃣ Allocate State Arrays
 # =====================================
 
 C1_phe = np.zeros(N)
@@ -42,75 +42,72 @@ P[0] = initialize_windkessel()
 
 
 # =====================================
-# 3️⃣ Signal Processor
-# =====================================
-
-fs = int(1/dt)
-bp = BPProcessor(fs, HR)
-
-last_beat_count = 0
-
-
-# =====================================
-# 4️⃣ Closed-Loop Simulation
+# 3️⃣ Run Simulation
 # =====================================
 
 for k in range(N - 1):
 
-    # ---- PK ----
+    # PK
     C1_phe[k+1], C2_phe[k+1] = update_pk_phe(
-        C1_phe[k],
-        C2_phe[k],
-        u_phe[k]
+        C1_phe[k], C2_phe[k], u_phe[k]
     )
 
     C1_nic[k+1], C2_nic[k+1] = update_pk_nic(
-        C1_nic[k],
-        C2_nic[k],
-        u_nic[k]
+        C1_nic[k], C2_nic[k], u_nic[k]
     )
 
-    # ---- PD ----
+    # PD
     R[k] = compute_R(C1_phe[k], C1_nic[k])
 
-    # ---- Windkessel ----
+    # Windkessel
     P[k+1], Pin[k], Qout[k] = update_windkessel(
         P[k], R[k], Qin[k]
     )
-
-    # ---- Beat-based controller update ----
-    if k > fs:
-
-        filtered = bp.bandpass_filter(P[:k+1])
-        peaks, troughs = bp.detect_beats(P[:k+1])
-
-        if len(troughs) > last_beat_count:
-
-            last_beat_count = len(troughs)
-
-            MAP_beats = bp.estimate_map(P[:k+1])
-
-            # Compute infusion for full history
-            u_phe, u_nic = run_controller(
-                C1_phe,
-                C1_nic,
-                MAP_beats,
-                troughs,
-                K
-            )
-
 
 print("Simulation complete.")
 
 
 # =====================================
-# 5️⃣ Optional Plot
+# 4️⃣ Beat Detection (NO FILTERING)
 # =====================================
 
-plt.figure()
-plt.plot(t, P, label="MAP")
-plt.axhline(target_map, linestyle='--', label="Target")
-plt.xlabel("Time (s)")
-plt.ylabel("Pressure (mmHg)")
-plt.legend()
+fs = int(1/dt)
+bp = BPProcessor(fs, HR)
+
+# Direct detection on raw pressure
+peaks, troughs = bp.detect_beats(P)
+
+print("Number of peaks:", len(peaks))
+print("Number of troughs:", len(troughs))
+
+if len(troughs) >= 2:
+    MAP_beats = bp.estimate_map(P)
+    beat_indices = troughs[:-1]  # align lengths
+else:
+    MAP_beats = np.array([])
+    beat_indices = np.array([])
+
+
+# =====================================
+# 5️⃣ Plot Estimated MAP Only
+# =====================================
+
+plt.figure(figsize=(10, 5))
+
+if len(MAP_beats) > 0:
+
+    beat_times = t[beat_indices]
+
+    plt.plot(beat_times, MAP_beats, 'o-', label="Estimated MAP")
+    plt.axhline(target_map, linestyle='--', color='black', label="Target MAP")
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Mean Arterial Pressure (mmHg)")
+    plt.title("Beat-Averaged MAP (No Filtering)")
+    plt.legend()
+    plt.grid(True)
+
+else:
+    print("No MAP beats detected.")
+
 plt.show()
