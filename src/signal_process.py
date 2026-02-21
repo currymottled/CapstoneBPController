@@ -1,20 +1,23 @@
 import numpy as np
-from config import *
-from windkessel import P, Pin
-from pump import HR
 from scipy.signal import butter, filtfilt, find_peaks
 
-fs = int(1/dt)
 
 class BPProcessor:
-  
-    def __init__(self, pressure_waveform, sampling_rate, heart_rate):
-        self.raw = np.asarray(pressure_waveform)
+
+    """
+    Blood pressure processing.
+    Bandpass -> Beat Detect -> Artifact Rejection -> MAP Estimate
+    """
+    def __init__(self, sampling_rate, heart_rate):
+
         self.fs = sampling_rate
         self.hr = heart_rate
 
         self.beat_interval_sec = 60.0 / self.hr
         self.samples_per_beat = int(self.fs * self.beat_interval_sec)
+
+        self._filter_coeffs = None
+        self._last_signal_id = None
 
         self.filtered = None
         self.peaks = None
@@ -23,64 +26,103 @@ class BPProcessor:
         self.DBP = None
         self.MAP = None
 
-    def bandpass_filter(self, order=4):
-        nyq = 0.5 * self.fs
-        lowcut = (self.hr / 3.0) / nyq
-        highcut = (self.hr * 5.0) / nyq
-        b, a = butter(order, [lowcut, highcut], btype='band')
-        self.filtered = filtfilt(b, a, self.raw)
+
+    # -------------------------
+    # Compute filter coefficients once
+    # -------------------------
+    def _get_filter(self, order=4):
+
+        if self._filter_coeffs is None:
+
+            nyq = 0.5 * self.fs
+            lowcut = (self.hr / 3.0) / nyq
+            highcut = (self.hr * 5.0) / nyq
+
+            b, a = butter(order, [lowcut, highcut], btype='band')
+            self._filter_coeffs = (b, a)
+
+        return self._filter_coeffs
+
+
+    # -------------------------
+    # Bandpass Filtering (safe)
+    # -------------------------
+    def bandpass_filter(self, signal, order=4):
+
+        # Only refilter if signal object changed
+        if id(signal) == self._last_signal_id and self.filtered is not None:
+            return self.filtered
+
+        b, a = self._get_filter(order)
+
+        self.filtered = filtfilt(b, a, signal)
+        self._last_signal_id = id(signal)
+
         return self.filtered
 
-    def detect_beats(self):
-        signal = self.filtered if self.filtered is not None else self.raw
+
+    # -------------------------
+    # Beat Detection
+    # -------------------------
+    def detect_beats(self, signal):
+
+        if self.filtered is None:
+            signal_to_use = signal
+        else:
+            signal_to_use = self.filtered
+
         min_distance = self.samples_per_beat
 
-        self.peaks, _ = find_peaks(signal, distance=min_distance)
-        self.troughs, _ = find_peaks(-signal, distance=min_distance)
-        self.SBP = signal[self.peaks]
-        self.DBP = signal[self.troughs]
+        self.peaks, _ = find_peaks(signal_to_use, distance=min_distance)
+        self.troughs, _ = find_peaks(-signal_to_use, distance=min_distance)
+
+        self.SBP = signal_to_use[self.peaks]
+        self.DBP = signal_to_use[self.troughs]
 
         self.reject_artifacts()
 
-        return self.peaks, self.troughs, self.SBP, self.DBP
+        return self.peaks, self.troughs
 
-    def estimate_map(self):
-        if self.troughs is None:
-            raise RuntimeError("Run detect_beats() first.")
 
-        signal = self.filtered if self.filtered is not None else self.raw
-        MAP = []
-
-        for i in range(len(self.troughs) - 1):
-            start = self.troughs[i]
-            end = self.troughs[i+1]
-            MAP.append(np.mean(signal[start:end]))
-
-        self.MAP = np.array(MAP)
-        return self.MAP
-
+    # -------------------------
+    # Artifact Rejection
+    # -------------------------
     def reject_artifacts(self, sbp_range=(60, 250), dbp_range=(30, 150)):
+
         if self.SBP is None or self.DBP is None:
             return
 
-        valid_indices = [
+        valid = [
             i for i in range(min(len(self.SBP), len(self.DBP)))
             if sbp_range[0] <= self.SBP[i] <= sbp_range[1]
             and dbp_range[0] <= self.DBP[i] <= dbp_range[1]
         ]
 
-        self.peaks = self.peaks[valid_indices]
-        self.troughs = self.troughs[valid_indices]
-        self.SBP = self.SBP[valid_indices]
-        self.DBP = self.DBP[valid_indices]
+        self.peaks = self.peaks[valid]
+        self.troughs = self.troughs[valid]
+        self.SBP = self.SBP[valid]
+        self.DBP = self.DBP[valid]
 
 
-# run process immediately 
+    # -------------------------
+    # MAP Estimation
+    # -------------------------
+    def estimate_map(self, signal):
 
-bp = BPProcessor(P, fs, HR)
+        if self.troughs is None:
+            raise RuntimeError("Run detect_beats() first.")
 
-bp.bandpass_filter()
-bp.detect_beats()
-MAP_beats = bp.estimate_map()
+        if self.filtered is None:
+            signal_to_use = signal
+        else:
+            signal_to_use = self.filtered
 
-beat_indices = bp.troughs
+        MAP = []
+
+        for i in range(len(self.troughs) - 1):
+            start = self.troughs[i]
+            end = self.troughs[i+1]
+            MAP.append(np.mean(signal_to_use[start:end]))
+
+        self.MAP = np.array(MAP)
+        return self.MAP

@@ -18,8 +18,4 @@ def compute_R(C1_phe, C1_nic):
 
     return R
 
-R = compute_R(C1_phe, C1_nic)
-C = C0
-Z = Z0
-
 

@@ -1,34 +1,54 @@
-from config import *
-from control import u_phe, u_nic
 import numpy as np
+from config import *
 
-# State arrays: central and peripheral concentrations
-C1_phe = np.zeros(N)
-C2_phe = np.zeros(N)
-C1_nic = np.zeros(N)
-C2_nic = np.zeros(N)
-dC1_phe = np.zeros(N)
-dC1_nic = np.zeros(N)
-dC2_phe = np.zeros(N)
-dC2_nic = np.zeros(N)
 
-# 2 Compartment PK update loop
-for k in range(N-1):
-    # Phenylephrine
-    dC1_phe[k]= (u_phe[k]/V1_phe) \
-              - k10_phe*C1_phe[k] \
-              - k12_phe*C1_phe[k] \
-              + k21_phe*C2_phe[k]
-    dC2_phe[k] = k12_phe*C1_phe[k] - k21_phe*C2_phe[k]
-    C1_phe[k+1] = C1_phe[k] + dt*dC1_phe[k]
-    C2_phe[k+1] = C2_phe[k] + dt*dC2_phe[k]
+# Initial Concentrations
 
-    # Nicardipine
-    dC1_nic[k] = (u_nic[k]/V1_nic) \
-              - k10_nic*C1_nic[k] \
-              - k12_nic*C1_nic[k] \
-              + k21_nic*C2_nic[k]
-    dC2_nic[k] = k12_nic*C1_nic[k] - k21_nic*C2_nic[k]
-    C1_nic[k+1] = C1_nic[k] + dt*dC1_nic[k]
-    C2_nic[k+1] = C2_nic[k] + dt*dC2_nic[k]
+def initialize_pk():
+    """
+    Returns initial concentrations.
+    """
+    C1_phe_0 = 0.0
+    C2_phe_0 = 0.0
+    C1_nic_0 = 0.0
+    C2_nic_0 = 0.0
 
+    return C1_phe_0, C2_phe_0, C1_nic_0, C2_nic_0
+
+
+# Update Functions
+
+def update_pk_phe(C1_k, C2_k, u_k):
+    """
+    One-step 2-compartment update for phenylephrine.
+    """
+
+    dC1 = (u_k / V1_phe) \
+        - k10_phe * C1_k \
+        - k12_phe * C1_k \
+        + k21_phe * C2_k
+
+    dC2 = k12_phe * C1_k - k21_phe * C2_k
+
+    C1_k1 = C1_k + dt * dC1
+    C2_k1 = C2_k + dt * dC2
+
+    return C1_k1, C2_k1
+
+
+def update_pk_nic(C1_k, C2_k, u_k):
+    """
+    One-step 2-compartment update for nicardipine.
+    """
+
+    dC1 = (u_k / V1_nic) \
+        - k10_nic * C1_k \
+        - k12_nic * C1_k \
+        + k21_nic * C2_k
+
+    dC2 = k12_nic * C1_k - k21_nic * C2_k
+
+    C1_k1 = C1_k + dt * dC1
+    C2_k1 = C2_k + dt * dC2
+
+    return C1_k1, C2_k1

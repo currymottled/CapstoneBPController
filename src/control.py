@@ -22,9 +22,7 @@ P_lqr = solve_discrete_are(A, B, Q, R_lqr)
 K = np.linalg.inv(B.T @ P_lqr @ B + R_lqr) @ (B.T @ P_lqr @ A)
 
 
-# =====================================
-# Beat-Synchronous Controller Function
-# =====================================
+# Beat synchronous control function
 
 def run_controller(C1_phe, C1_nic, MAP_beats, beat_indices):
     """

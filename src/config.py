@@ -22,8 +22,8 @@ Qmean = SV / beat_period          # avg blow flow through cycle - tied to stroke
 
 # Cardiovascular (Windkessel) Parameters
 R0 = 1e3  # Peripheral resistance, mmHg·s/L
-C0 = 1e-3  # Arterial compliance, L/mmHg
-Z0 = 5        # Aortal characteristic imperance, mmHg·s/L
+C = 1e-3  # Arterial compliance, L/mmHg
+Z = 5        # Aortal characteristic imperance, mmHg·s/L
 Pv = 5        # Background venous pressure, mmHg
 
 # PK Parameters - Phenylephrine

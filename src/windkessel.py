@@ -1,25 +1,37 @@
-from config import *
-from pump import Qin
-from pd import R, C, Za
 import numpy as np
+from config import *
 
-# Major cardiac variable estimates
-MAP_est   = Pv + R * Qmean
-PP_est    = SV / C
-DBP_est   = MAP_est - PP_est / 3
 
-# Initialize blood pressure & flow
-P    = np.zeros(N)  # pressure across compliance
-Pin  = np.zeros(N)  # inlet (aortic) pressure
-Qout = np.zeros(N)  # outflow (Qin - Qc)
-P[0]    = DBP_est #Q(0) = 0
-Pin[0]  = DBP_est #Q(0) = 0
-# Update loop
+def initialize_windkessel():
+    """
+    Returns initial pressure state.
+    """
+    P0 = starting_map  # start near venous pressure or set externally
+    return P0
 
-for k in range(N-1):
-    tau = C*R
+
+def update_windkessel(P_k, R_k, Qin_k):
+    """
+    One-step Windkessel update.
+
+    Inputs:
+        P_k   : current pressure
+        R_k   : current resistance
+        Qin_k : inflow at time k
+
+    Returns:
+        P_k1  : next pressure
+        Pin_k : inlet pressure
+        Qout_k: outflow
+    """
+
+    tau = R_k * C
     alpha = dt / tau
-    beta  = dt/ C
-    P[k+1]  = (P[k] + beta*Qin[k] + alpha*Pv) / (1.0 + alpha)
-    Pin[k]  = P[k] + Za*Qin[k]
-    Qout[k] = (P[k] - Pv)/R
+    beta  = dt / C
+
+    P_k1 = (P_k + beta * Qin_k + alpha * Pv) / (1.0 + alpha)
+
+    Pin_k  = P_k + Z * Qin_k
+    Qout_k = (P_k - Pv) / R_k
+
+    return P_k1, Pin_k, Qout_k
