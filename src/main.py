@@ -68,7 +68,7 @@ print("Simulation complete.")
 
 
 # =====================================
-# 4️⃣ Beat Detection (NO FILTERING)
+# 4️⃣ Beat Detection
 # =====================================
 
 fs = int(1/dt)
@@ -95,22 +95,28 @@ else:
 # 5️⃣ Plot Estimated MAP Only
 # =====================================
 
-plt.figure(figsize=(10, 5))
+# plt.figure(figsize=(10, 5))
 
-if len(MAP_beats) > 0:
+# if len(MAP_beats) > 0:
 
-    beat_times = t[beat_indices]
+#     beat_times = t[beat_indices]
 
-    plt.plot(beat_times, MAP_beats, 'o-', label="Estimated MAP")
-    plt.axhline(target_map, linestyle='--', color='black', label="Target MAP")
+#     plt.plot(beat_times, MAP_beats, 'o-', label="Estimated MAP")
+#     plt.axhline(target_map, linestyle='--', color='black', label="Target MAP")
 
-    plt.xlabel("Time (s)")
-    plt.ylabel("Mean Arterial Pressure (mmHg)")
-    plt.title("Beat-Averaged MAP (No Filtering)")
-    plt.legend()
-    plt.grid(True)
+#     plt.xlabel("Time (s)")
+#     plt.ylabel("Mean Arterial Pressure (mmHg)")
+#     plt.title("Beat-Averaged MAP (No Filtering)")
+#     plt.legend()
+#     plt.grid(True)
 
-else:
-    print("No MAP beats detected.")
+# else:
+#     print("No MAP beats detected.")
 
+# plt.show()
+
+
+
+plt.figure(figsize=(10,5))
+plt.plot(t[:1000], P[:1000])
 plt.show()

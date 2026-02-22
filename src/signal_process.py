@@ -79,29 +79,7 @@ class BPProcessor:
         self.SBP = signal_to_use[self.peaks]
         self.DBP = signal_to_use[self.troughs]
 
-        self.reject_artifacts()
-
         return self.peaks, self.troughs
-
-
-    # -------------------------
-    # Artifact Rejection
-    # -------------------------
-    def reject_artifacts(self, sbp_range=(60, 250), dbp_range=(30, 150)):
-
-        if self.SBP is None or self.DBP is None:
-            return
-
-        valid = [
-            i for i in range(min(len(self.SBP), len(self.DBP)))
-            if sbp_range[0] <= self.SBP[i] <= sbp_range[1]
-            and dbp_range[0] <= self.DBP[i] <= dbp_range[1]
-        ]
-
-        self.peaks = self.peaks[valid]
-        self.troughs = self.troughs[valid]
-        self.SBP = self.SBP[valid]
-        self.DBP = self.DBP[valid]
 
 
     # -------------------------
