@@ -7,7 +7,7 @@ def initialize_windkessel():
     Returns initial pressure state.
     """
     P0 = starting_map  # start near venous pressure or set externally
-    return 0.7 * P0
+    return 0.3 * P0
 
 
 def update_windkessel(P_k, R_k, Qin_k):

@@ -1,7 +1,8 @@
 import numpy as np
 
 # Generic Simulation Parameters
-dt = 0.01                   # increment
+dt = 0.01                   # sim rate
+fs = int(1/dt)              # sampling rate
 T  = 100                    # total sim time in seconds
 N  = int(T/dt)              # number of discrete time steps
 t  = np.arange(N) * dt      # time vector in seconds
@@ -34,8 +35,6 @@ R0 = 1200  # Peripheral resistance, mmHg·s/L
 C = 1.5e-3  # Arterial compliance, L/mmHg
 Z = 0.05       # Aortal characteristic imperance, mmHg·s/L
 Pv = 5        # Background venous pressure, mmHg
-
-
 
 # PK Parameters - Phenylephrine
 V1_phe, V2_phe = 10.0, 20.0   # L, central and peripheral volumes

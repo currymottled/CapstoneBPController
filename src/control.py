@@ -12,44 +12,40 @@ def compute_lqr_gain(A, B, Q, R): # A & B computed via compute_state_space, Q & 
 
 # Beat synchronous control function
 
-def run_controller(C1_phe, C1_nic, MAP_beats, beat_indices, K):
+def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, K):
     """
     Beat-synchronous LQR controller.
+    Runs ONCE per beat and returns infusion commands for that beat.
 
     Inputs:
-        C1_phe       : array of central phe concentrations
-        C1_nic       : array of central nic concentrations
-        MAP_beats    : beat-by-beat MAP values
-        beat_indices : trough indices defining beat boundaries
+        C1_phe_k : phe concentration at the start of the beat
+        C1_nic_k : nic concentration at the start of the beat
+        MAP_k    : MAP for the completed beat
+        K        : LQR gain matrix
 
     Returns:
-        u_phe, u_nic : infusion arrays (length N)
+        u_phe_k, u_nic_k : infusion commands for the NEXT beat
     """
 
-    u_phe = np.zeros(N)
-    u_nic = np.zeros(N)
+    # Build state vector
+    x_k = np.array([
+        C1_phe_k,
+        C1_nic_k,
+        MAP_k
+    ])
 
-    for i in range(len(beat_indices) - 1):
+    # Reference state
+    x_ref = np.array([
+        0.0,
+        0.0,
+        target_map
+    ])
 
-        start = beat_indices[i]
-        end   = beat_indices[i+1]
+    # LQR control law
+    u_k = -K @ (x_k - x_ref)
 
-        x_k = np.array([
-            C1_phe[start],
-            C1_nic[start],
-            MAP_beats[i]
-        ])
+    # Extract drug commands
+    u_phe_k = u_k[0]
+    u_nic_k = u_k[1]
 
-        x_ref = np.array([
-            0.0,
-            0.0,
-            target_map
-        ])
-
-        u_k = -K @ (x_k - x_ref)
-
-        # Hold infusion constant for this beat
-        u_phe[start:end] = u_k[0]
-        u_nic[start:end] = u_k[1]
-
-    return u_phe, u_nic
+    return u_phe_k, u_nic_k

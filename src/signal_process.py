@@ -45,7 +45,7 @@ class BPProcessor:
 
 
     # -------------------------
-    # Bandpass Filtering (safe)
+    # Bandpass Filtering
     # -------------------------
     def bandpass_filter(self, signal, order=4):
 
