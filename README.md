@@ -23,8 +23,7 @@ There are a few puzzle pieces to this control system:
 | Live State Estimation  | Signal processing & analysis (blood pressure & flow) |
 | Actuators              | Cardiac drugs                                 |
 
-The system as a whole has more parts (sensors, database, data relay etc.), but these issues are routine. This project will include a database for storing results, sensors to use as 
-inputs alongside simulated inputs (heart rate, electrocardiogram), and a dashboard. These are largely side-tasks, however.
+The system as a whole has more parts (sensors, database, data relay etc.), these are handled in other repository.
 
 For now the structure of the files looks like this:
 ## Project Structure
@@ -38,7 +37,7 @@ For now the structure of the files looks like this:
 | `control.py`       | Controller – takes in processed BP waveform from signal_process.py and controls drug infusion                           |
 | `pk.py`            | Pharmacokinetic model – calculates drug concentration in plasma over time with a two‑compartment model based on infusion|
 | `pd.py`            | Pharmacodynamic model – calculates the effect of drug concentration levels on Windkessel parameters                     |
-| `main.py`          | Gathers and prints/plots results                                                                                        |                                                          
+| `main.py`          | Gathers, prints/plots, and sends results                                                                                |                                                          
 
 
 If this first cut succeeds the following would be nice:
