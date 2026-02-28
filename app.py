@@ -28,7 +28,7 @@ def run_simulation():
     current_u_nic = 0.0
     
     # Initialize - Cardio State
-    R = np.zeros(N)
+    R_arr = np.zeros(N)
     P = np.zeros(N)
     P[0] = initialize_windkessel()
     Pin = np.zeros(N)
@@ -53,8 +53,8 @@ def run_simulation():
         C1_phe[k+1], C2_phe[k+1] = update_pk_phe(C1_phe[k], C2_phe[k], u_phe[k])
         C1_nic[k+1], C2_nic[k+1] = update_pk_nic(C1_nic[k], C2_nic[k], u_nic[k])
 
-        R[k] = compute_R(C1_phe[k], C1_nic[k])
-        P[k+1], Pin[k], Qout[k] = update_windkessel(P[k], R[k], Qin[k])
+        R_arr[k] = compute_R(C1_phe[k], C1_nic[k])
+        P[k+1], Pin[k], Qout[k] = update_windkessel(P[k], R_arr[k], Qin[k])
 
         peaks, troughs = bp.detect_beats(P[:k+1])
 
@@ -72,9 +72,15 @@ def run_simulation():
 
     beat_times = [float(idx * dt) for idx in beat_indices]
     
-    # Downsample time-series graphs for faster frontend rendering (N is 10000)
-    # 10000 points is fine for Chart.js if optimized, but let's downsample by 10 for drawing continuous arrays to avoid UI lag.
-    ds = 10
+    # Downsample for frontend (N can be 100k at 1kHz)
+    ds = max(1, N // 2000)  # ~2000 points for time-series charts
+    # For the pressure waveform, show 5 beats worth of data at full resolution
+    wave_samples = int(5 * beat_period * fs)
+    # Pick a window after the system has settled (around 10s in)
+    wave_start = int(10.0 * fs)
+    wave_end = min(wave_start + wave_samples, N)
+    # Downsample the waveform window for rendering (target ~2000 points)
+    wave_ds = max(1, (wave_end - wave_start) // 2000)
     
     return {
         "time": t[::ds].tolist(),
@@ -84,7 +90,11 @@ def run_simulation():
         "c1_phe": C1_phe[::ds].tolist(),
         "c1_nic": C1_nic[::ds].tolist(),
         "u_phe": u_phe[::ds].tolist(),
-        "u_nic": u_nic[::ds].tolist()
+        "u_nic": u_nic[::ds].tolist(),
+        # Pressure waveform (high-res window)
+        "wave_time": t[wave_start:wave_end:wave_ds].tolist(),
+        "wave_pin": Pin[wave_start:wave_end:wave_ds].tolist(),
+        "wave_p": P[wave_start:wave_end:wave_ds].tolist(),
     }
 
 @app.route('/')

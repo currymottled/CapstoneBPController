@@ -1,25 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Twin: BP Controller</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <title>Digital Twin · BP Controller</title>
+    <meta name="description"
+        content="LQR-based blood pressure regulation digital twin for anaesthesia control simulation.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Vanilla CSS - Highly Aesthetic Dark Theme */
         :root {
-            --bg-base: #0a0a0f;
-            --bg-panel: #14141d;
-            --bg-panel-hover: #1b1b26;
-            --text-primary: #f0f0f5;
-            --text-secondary: #9aa0a6;
-            --accent-primary: #00d2ff;
-            --accent-secondary: #3a7bd5;
-            --accent-danger: #ff4b4b;
-            --accent-success: #00e676;
-            --border-subtle: rgba(255, 255, 255, 0.05);
-            --shadow-glow: 0 0 20px rgba(0, 210, 255, 0.15);
+            --bg-base: #08090d;
+            --bg-panel: #111318;
+            --bg-panel-hover: #181b22;
+            --bg-card: rgba(255, 255, 255, 0.025);
+            --text-primary: #eaedf2;
+            --text-secondary: #7a8194;
+            --accent-cyan: #00d4ff;
+            --accent-blue: #3a7bd5;
+            --accent-red: #ff4b5c;
+            --accent-green: #00e676;
+            --accent-orange: #ffa726;
+            --border: rgba(255, 255, 255, 0.06);
+            --glow-cyan: 0 0 30px rgba(0, 212, 255, 0.15);
         }
 
         * {
@@ -29,84 +33,170 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-base);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-base);
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
 
+        /* ── Header ── */
         header {
-            padding: 2rem;
-            background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-base) 100%);
-            border-bottom: 1px solid var(--border-subtle);
+            padding: 2.5rem 2rem 2rem;
             text-align: center;
+            background: linear-gradient(180deg, rgba(0, 212, 255, 0.04) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            position: relative;
         }
 
-        h1 {
-            font-size: 2.5rem;
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+        }
+
+        .logo {
+            font-size: 2.8rem;
             font-weight: 800;
-            background: -webkit-linear-gradient(var(--accent-primary), var(--accent-secondary));
+            letter-spacing: -1.5px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-            letter-spacing: -1px;
+            margin-bottom: 0.3rem;
         }
 
-        p.subtitle {
+        .tagline {
+            font-size: 1rem;
             color: var(--text-secondary);
-            font-size: 1.1rem;
             font-weight: 300;
         }
 
+        /* ── Container ── */
         .container {
-            flex: 1;
-            padding: 2rem;
-            max-width: 1400px;
+            max-width: 1440px;
             margin: 0 auto;
-            width: 100%;
+            padding: 2rem;
         }
 
+        /* ── Run Button ── */
         .controls {
             display: flex;
             justify-content: center;
             margin-bottom: 2rem;
         }
 
-        button.run-btn {
-            background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+        .run-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
             color: #fff;
             border: none;
-            padding: 1rem 3rem;
-            font-size: 1.2rem;
+            padding: 1rem 3.5rem;
+            font-size: 1.15rem;
             font-weight: 600;
-            border-radius: 50px;
+            font-family: inherit;
+            border-radius: 60px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
-            display: flex;
+            transition: all 0.35s cubic-bezier(.25, .8, .25, 1);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.25);
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
-        button.run-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(0, 210, 255, 0.5);
+        .run-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.45);
         }
 
-        button.run-btn:active {
-            transform: translateY(1px);
+        .run-btn:active {
+            transform: translateY(0);
         }
 
+        .run-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Stats ── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        .stat:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .stat-value.cyan {
+            color: var(--accent-cyan);
+        }
+
+        .stat-value.green {
+            color: var(--accent-green);
+        }
+
+        .stat-value.orange {
+            color: var(--accent-orange);
+        }
+
+        .stat-value.blue {
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 6px;
+        }
+
+        /* ── Dashboard Grid ── */
         .dashboard {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
+            gap: 1.5rem;
             opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: translateY(25px);
+            transition: opacity 0.7s, transform 0.7s;
         }
 
         .dashboard.visible {
@@ -118,24 +208,25 @@
             .dashboard {
                 grid-template-columns: 1fr 1fr;
             }
-            .panel.full-width {
+
+            .panel.span {
                 grid-column: 1 / -1;
             }
         }
 
+        /* ── Panel ── */
         .panel {
-            background-color: var(--bg-panel);
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
             border-radius: 20px;
             padding: 1.5rem;
-            border: 1px solid var(--border-subtle);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: background-color 0.3s;
             position: relative;
             overflow: hidden;
+            transition: background 0.3s;
         }
 
         .panel:hover {
-            background-color: var(--bg-panel-hover);
+            background: var(--bg-panel-hover);
         }
 
         .panel::before {
@@ -144,319 +235,352 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent-primary), transparent);
-            opacity: 0.5;
+            height: 3px;
+        }
+
+        .panel.accent-cyan::before {
+            background: linear-gradient(90deg, var(--accent-cyan), transparent);
+        }
+
+        .panel.accent-red::before {
+            background: linear-gradient(90deg, var(--accent-red), transparent);
+        }
+
+        .panel.accent-blue::before {
+            background: linear-gradient(90deg, var(--accent-blue), transparent);
+        }
+
+        .panel.accent-green::before {
+            background: linear-gradient(90deg, var(--accent-green), transparent);
         }
 
         .panel h2 {
-            font-size: 1.2rem;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 600;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
+            gap: 10px;
         }
 
-        .panel h2::before {
-            content: '';
-            display: inline-block;
+        .panel h2 .dot {
             width: 8px;
             height: 8px;
-            background-color: var(--accent-primary);
             border-radius: 50%;
-            margin-right: 10px;
-            box-shadow: 0 0 10px var(--accent-primary);
+            display: inline-block;
         }
 
-        .chart-container {
+        .dot.cyan {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .dot.red {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+
+        .dot.blue {
+            background: var(--accent-blue);
+            box-shadow: 0 0 8px var(--accent-blue);
+        }
+
+        .dot.green {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .chart-wrap {
             position: relative;
-            height: 350px;
+            height: 320px;
             width: 100%;
         }
 
-        /* Loading indicator */
-        .loader {
-            display: none;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+        .chart-wrap.tall {
+            height: 380px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* ── Hidden until sim runs ── */
+        .hidden {
+            display: none !important;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: rgba(255,255,255,0.03);
-            padding: 1.5rem;
-            border-radius: 15px;
+        /* ── Footer ── */
+        footer {
             text-align: center;
-            border: 1px solid var(--border-subtle);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
-            background: -webkit-linear-gradient(var(--accent-success), #a8ff78);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
+            padding: 2rem;
             color: var(--text-secondary);
-            margin-top: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
         }
-
     </style>
 </head>
+
 <body>
 
     <header>
-        <h1>LQR Digital Twin</h1>
-        <p class="subtitle">Real-time Physiological Anaesthesia Control System</p>
+        <div class="logo">LQR Digital Twin</div>
+        <p class="tagline">Closed-Loop Blood Pressure Regulation · Windkessel + Pharmacokinetic Model</p>
     </header>
 
     <div class="container">
-        
+
+        <!-- Run Button -->
         <div class="controls">
-            <button class="run-btn" id="runSimBtn" onclick="runSimulation()">
-                <span>Run Closed-Loop Simulation</span>
-                <div class="loader" id="btnLoader"></div>
+            <button class="run-btn" id="runBtn" onclick="runSim()">
+                <span id="btnText">Run Simulation</span>
+                <div class="spinner" id="spinner"></div>
             </button>
         </div>
 
-        <div class="stats-grid" id="statsGrid" style="display:none;">
-            <div class="stat-card">
-                <div class="stat-value" id="statMap">--</div>
-                <div class="stat-label">Target MAP (mmHg)</div>
+        <!-- Stats Row -->
+        <div class="stats hidden" id="stats">
+            <div class="stat">
+                <div class="stat-value cyan" id="sTarget">--</div>
+                <div class="stat-label">Target MAP</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value" id="statSimTime">100</div>
-                <div class="stat-label">Sim Time (s)</div>
+            <div class="stat">
+                <div class="stat-value green" id="sSteady">--</div>
+                <div class="stat-label">Steady-State MAP</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value" id="statStatus" style="-webkit-text-fill-color: var(--accent-primary)">Ready</div>
+            <div class="stat">
+                <div class="stat-value orange" id="sBeats">--</div>
+                <div class="stat-label">Heart Beats</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value blue" id="sStatus">Ready</div>
                 <div class="stat-label">Status</div>
             </div>
         </div>
 
-        <div class="dashboard" id="dashboard">
-            <div class="panel full-width">
-                <h2>Beat-Averaged MAP Regulation</h2>
-                <div class="chart-container">
+        <!-- Dashboard -->
+        <div class="dashboard" id="dash">
+
+            <!-- 1. Aortic Pressure Waveform -->
+            <div class="panel span accent-green">
+                <h2><span class="dot green"></span>Aortic Pressure Waveform</h2>
+                <div class="chart-wrap tall">
+                    <canvas id="waveChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. MAP Regulation -->
+            <div class="panel span accent-cyan">
+                <h2><span class="dot cyan"></span>Beat-Averaged MAP Regulation</h2>
+                <div class="chart-wrap tall">
                     <canvas id="mapChart"></canvas>
                 </div>
             </div>
 
-            <div class="panel">
-                <h2>Drug Infusion Commands</h2>
-                <div class="chart-container">
-                    <canvas id="infusionChart"></canvas>
+            <!-- 3. Drug Infusion -->
+            <div class="panel accent-red">
+                <h2><span class="dot red"></span>Drug Infusion Commands</h2>
+                <div class="chart-wrap">
+                    <canvas id="infChart"></canvas>
                 </div>
             </div>
 
-            <div class="panel">
-                <h2>Effect-Site Concentrations</h2>
-                <div class="chart-container">
+            <!-- 4. Concentrations -->
+            <div class="panel accent-blue">
+                <h2><span class="dot blue"></span>Effect-Site Concentrations</h2>
+                <div class="chart-wrap">
                     <canvas id="concChart"></canvas>
                 </div>
             </div>
-        </div>
 
+        </div>
     </div>
 
+    <footer>
+        Capstone BP Controller &middot; Three-Element Windkessel &middot; LQR Feedback Control
+    </footer>
+
     <script>
-        Chart.defaults.color = '#9aa0a6';
+        /* ── Chart.js Defaults ── */
+        Chart.defaults.color = '#7a8194';
         Chart.defaults.font.family = "'Inter', sans-serif";
-        Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+        Chart.defaults.font.size = 12;
+        Chart.defaults.scale.grid.color = 'rgba(255,255,255,0.04)';
 
-        let mapChart, infusionChart, concChart;
+        let charts = {};
 
-        async function runSimulation() {
-            const btn = document.getElementById('runSimBtn');
-            const loader = document.getElementById('btnLoader');
-            const dashboard = document.getElementById('dashboard');
-            const statsGrid = document.getElementById('statsGrid');
-            const statusEl = document.getElementById('statStatus');
-            
-            // UI State updates
-            btn.querySelector('span').textContent = 'Simulating...';
-            btn.style.opacity = '0.8';
-            btn.style.pointerEvents = 'none';
-            loader.style.display = 'block';
-            dashboard.classList.remove('visible');
-            statsGrid.style.display = 'grid';
-            statusEl.textContent = 'Computing...';
+        async function runSim() {
+            const btn = document.getElementById('runBtn');
+            const text = document.getElementById('btnText');
+            const spin = document.getElementById('spinner');
+            const dash = document.getElementById('dash');
+            const statDiv = document.getElementById('stats');
+
+            btn.disabled = true;
+            text.textContent = 'Computing…';
+            spin.style.display = 'block';
+            dash.classList.remove('visible');
+            statDiv.classList.remove('hidden');
+            document.getElementById('sStatus').textContent = 'Running…';
 
             try {
-                const response = await fetch('/simulate');
-                if (!response.ok) throw new Error('Simulation failed');
-                const data = await response.json();
+                const res = await fetch('/simulate');
+                if (!res.ok) throw new Error('Server error');
+                const d = await res.json();
 
-                document.getElementById('statMap').textContent = data.target_map;
-                statusEl.textContent = 'Complete';
-                statsGrid.style.display = 'grid';
+                // Stats
+                document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
+                const lastMAPs = d.map_beats.slice(-10);
+                const steadyMAP = (lastMAPs.reduce((a, b) => a + b, 0) / lastMAPs.length).toFixed(1);
+                document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
+                document.getElementById('sBeats').textContent = d.beat_times.length;
+                document.getElementById('sStatus').textContent = 'Complete ✓';
 
-                renderCharts(data);
-                dashboard.classList.add('visible');
+                renderAll(d);
+                dash.classList.add('visible');
 
-            } catch (err) {
-                console.error(err);
-                alert("Error running simulation. Check server logs.");
-                statusEl.textContent = 'Failed';
-                statusEl.style.webkitTextFillColor = 'var(--accent-danger)';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('sStatus').textContent = 'Error ✗';
             } finally {
-                btn.querySelector('span').textContent = 'Re-Run Simulation';
-                btn.style.opacity = '1';
-                btn.style.pointerEvents = 'auto';
-                loader.style.display = 'none';
+                btn.disabled = false;
+                text.textContent = 'Re-Run Simulation';
+                spin.style.display = 'none';
             }
         }
 
-        function renderCharts(data) {
-            
-            if(mapChart) mapChart.destroy();
-            if(infusionChart) infusionChart.destroy();
-            if(concChart) concChart.destroy();
+        function destroyAll() {
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+        }
 
-            // 1. MAP
-            const mapCtx = document.getElementById('mapChart').getContext('2d');
-            mapChart = new Chart(mapCtx, {
+        /* ── Helper: thin labels so x-axis isn't crowded ── */
+        function thinLabels(arr, maxTicks) {
+            const step = Math.max(1, Math.floor(arr.length / maxTicks));
+            return arr.map((v, i) => i % step === 0 ? v : '');
+        }
+
+        function renderAll(d) {
+            destroyAll();
+
+            /* 1. Pressure Waveform */
+            const wLabels = d.wave_time.map(v => v.toFixed(2));
+            charts.wave = new Chart(document.getElementById('waveChart'), {
                 type: 'line',
                 data: {
-                    labels: data.beat_times.map(t => t.toFixed(1)),
-                    datasets: [
-                        {
-                            label: 'Estimated MAP',
-                            data: data.map_beats,
-                            borderColor: '#00d2ff',
-                            backgroundColor: 'rgba(0, 210, 255, 0.1)',
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#00d2ff',
-                            fill: true,
-                            tension: 0.2
-                        },
-                        {
-                            label: 'Target MAP',
-                            data: Array(data.beat_times.length).fill(data.target_map),
-                            borderColor: '#f0f0f5',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            fill: false
-                        }
-                    ]
+                    labels: thinLabels(wLabels, 20),
+                    datasets: [{
+                        label: 'Aortic Pressure (mmHg)',
+                        data: d.wave_pin,
+                        borderColor: '#00e676',
+                        backgroundColor: 'rgba(0,230,118,0.06)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.1
+                    }, {
+                        label: 'Capacitor Pressure (mmHg)',
+                        data: d.wave_p,
+                        borderColor: 'rgba(0,212,255,0.5)',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.1
+                    }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        x: { title: { display: true, text: 'Time (s)' }, grid: {display: false} },
-                        y: { title: { display: true, text: 'Pressure (mmHg)' } }
-                    },
-                    animation: { duration: 1500, easing: 'easeOutQuart' },
-                    plugins: {
-                        legend: { position: 'top' }
-                    }
-                }
+                options: chartOpts('Time (s)', 'Pressure (mmHg)', true)
             });
 
-            // 2. Infusion
-            const infCtx = document.getElementById('infusionChart').getContext('2d');
-            infusionChart = new Chart(infCtx, {
+            /* 2. MAP */
+            const mLabels = d.beat_times.map(v => v.toFixed(1));
+            charts.map = new Chart(document.getElementById('mapChart'), {
                 type: 'line',
                 data: {
-                    labels: data.time.map(t => t.toFixed(1)),
-                    datasets: [
-                        {
-                            label: 'Phenylephrine',
-                            data: data.u_phe,
-                            borderColor: '#ff4b4b',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            stepped: true
-                        },
-                        {
-                            label: 'Nicardipine',
-                            data: data.u_nic,
-                            borderColor: '#3a7bd5',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            stepped: true
-                        }
-                    ]
+                    labels: thinLabels(mLabels, 25),
+                    datasets: [{
+                        label: 'Estimated MAP',
+                        data: d.map_beats,
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0,212,255,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 2.5,
+                        pointBackgroundColor: '#00d4ff',
+                        fill: true,
+                        tension: 0.25
+                    }, {
+                        label: 'Target MAP',
+                        data: Array(d.beat_times.length).fill(d.target_map),
+                        borderColor: 'rgba(255,255,255,0.5)',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false
+                    }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        x: { title: { display: true, text: 'Time (s)' }, grid: {display: false} },
-                        y: { title: { display: true, text: 'Infusion Rate' } }
-                    },
-                    animation: { duration: 1500, easing: 'easeOutQuart' },
-                    plugins: {
-                        legend: { position: 'top' }
-                    }
-                }
+                options: chartOpts('Time (s)', 'Pressure (mmHg)', true)
             });
 
-            // 3. Concentration
-            const concCtx = document.getElementById('concChart').getContext('2d');
-            concChart = new Chart(concCtx, {
+            /* 3. Infusion */
+            const tLabels = d.time.map(v => v.toFixed(1));
+            charts.inf = new Chart(document.getElementById('infChart'), {
                 type: 'line',
                 data: {
-                    labels: data.time.map(t => t.toFixed(1)),
-                    datasets: [
-                        {
-                            label: 'C1 Phenylephrine',
-                            data: data.c1_phe,
-                            borderColor: '#ff4b4b',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.1
-                        },
-                        {
-                            label: 'C1 Nicardipine',
-                            data: data.c1_nic,
-                            borderColor: '#3a7bd5',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.1
-                        }
-                    ]
+                    labels: thinLabels(tLabels, 15),
+                    datasets: [{
+                        label: 'Phenylephrine',
+                        data: d.u_phe,
+                        borderColor: '#ff4b5c',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        stepped: true
+                    }, {
+                        label: 'Nicardipine',
+                        data: d.u_nic,
+                        borderColor: '#3a7bd5',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        stepped: true
+                    }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        x: { title: { display: true, text: 'Time (s)' }, grid: {display: false} },
-                        y: { title: { display: true, text: 'Concentration' } }
-                    },
-                    animation: { duration: 1500, easing: 'easeOutQuart' },
-                    plugins: {
-                        legend: { position: 'top' }
-                    }
-                }
+                options: chartOpts('Time (s)', 'Infusion Rate')
             });
+
+            /* 4. Concentration */
+            charts.conc = new Chart(document.getElementById('concChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(tLabels, 15),
+                    datasets: [{
+                        label: 'C₁ Phenylephrine',
+                        data: d.c1_phe,
+                        borderColor: '#ff4b5c',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }, {
+                        label: 'C₁ Nicardipine',
+                        data: d.c1_nic,
+                        borderColor: '#3a7bd5',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }]
+                },
+                options: chartOpts('Time (s)', 'Concentration')
+            });
+        }
+
+        function chartOpts(xLabel, yLabel, bigAnimation) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                animation: { duration: bigAnimation ? 1800 : 1200, easing: 'easeOutQuart' },
+                scales: {
+                    x: { title: { display: true, text: xLabel }, grid: { display: false } },
+                    y: { title: { display: true, text: yLabel } }
+                },
+                plugins: { legend: { position: 'top', labels: { boxWidth: 14, padding: 16, usePointStyle: true } } }
+            };
         }
     </script>
 </body>
+
 </html>
