@@ -44,8 +44,8 @@ def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, K):
     # LQR control law
     u_k = -K @ (x_k - x_ref)
 
-    # Extract drug commands
-    u_phe_k = u_k[0]
-    u_nic_k = u_k[1]
+    # Extract drug commands (must be positive)
+    u_phe_k = max(0.0, u_k[0])
+    u_nic_k = max(0.0, u_k[1])
 
     return u_phe_k, u_nic_k

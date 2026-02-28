@@ -90,10 +90,8 @@ class BPProcessor:
         if self.troughs is None:
             raise RuntimeError("Run detect_beats() first.")
 
-        if self.filtered is None:
-            signal_to_use = signal
-        else:
-            signal_to_use = self.filtered
+        # MAP should always be computed from the raw signal, not the zero-mean filtered signal
+        signal_to_use = signal
 
         MAP = []
 

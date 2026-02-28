@@ -8,8 +8,7 @@ def Qsys(shape, scale, t):
 # --- Compute area of unscaled systolic profile ---
 tb_sys = np.arange(0.0, sys_time, dt)
 kernel_sys = Qsys(shape, scale, tb_sys)
-
-area_sys = np.trapezoid(kernel_sys, tb_sys)
+area_sys = np.trapz(kernel_sys, tb_sys)
 
 # Scale factor so that inflow per beat = SV
 Qscale = SV / area_sys
