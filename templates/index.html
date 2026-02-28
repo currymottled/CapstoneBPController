@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin: BP Controller</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Vanilla CSS - Highly Aesthetic Dark Theme */
+        :root {
+            --bg-base: #0a0a0f;
+            --bg-panel: #14141d;
+            --bg-panel-hover: #1b1b26;
+            --text-primary: #f0f0f5;
+            --text-secondary: #9aa0a6;
+            --accent-primary: #00d2ff;
+            --accent-secondary: #3a7bd5;
+            --accent-danger: #ff4b4b;
+            --accent-success: #00e676;
+            --border-subtle: rgba(255, 255, 255, 0.05);
+            --shadow-glow: 0 0 20px rgba(0, 210, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-base) 100%);
+            border-bottom: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: -webkit-linear-gradient(var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        button.run-btn {
+            background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+            color: #fff;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button.run-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 210, 255, 0.5);
+        }
+
+        button.run-btn:active {
+            transform: translateY(1px);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .dashboard.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media(min-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+            .panel.full-width {
+                grid-column: 1 / -1;
+            }
+        }
+
+        .panel {
+            background-color: var(--bg-panel);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-subtle);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: background-color 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel:hover {
+            background-color: var(--bg-panel-hover);
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), transparent);
+            opacity: 0.5;
+        }
+
+        .panel h2 {
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel h2::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-primary);
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* Loading indicator */
+        .loader {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.03);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            background: -webkit-linear-gradient(var(--accent-success), #a8ff78);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>LQR Digital Twin</h1>
+        <p class="subtitle">Real-time Physiological Anaesthesia Control System</p>
+    </header>
+
+    <div class="container">
+        
+        <div class="controls">
+            <button class="run-btn" id="runSimBtn" onclick="runSimulation()">
+                <span>Run Closed-Loop Simulation</span>
+                <div class="loader" id="btnLoader"></div>
+            </button>
+        </div>
+
+        <div class="stats-grid" id="statsGrid" style="display:none;">
+            <div class="stat-card">
+                <div class="stat-value" id="statMap">--</div>
+                <div class="stat-label">Target MAP (mmHg)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statSimTime">100</div>
+                <div class="stat-label">Sim Time (s)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statStatus" style="-webkit-text-fill-color: var(--accent-primary)">Ready</div>
+                <div class="stat-label">Status</div>
+            </div>
+        </div>
+
+        <div class="dashboard" id="dashboard">
+            <div class="panel full-width">
+                <h2>Beat-Averaged MAP Regulation</h2>
+                <div class="chart-container">
+                    <canvas id="mapChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Drug Infusion Commands</h2>
+                <div class="chart-container">
+                    <canvas id="infusionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Effect-Site Concentrations</h2>
+                <div class="chart-container">
+                    <canvas id="concChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        Chart.defaults.color = '#9aa0a6';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+
+        let mapChart, infusionChart, concChart;
+
+        async function runSimulation() {
+            const btn = document.getElementById('runSimBtn');
+            const loader = document.getElementById('btnLoader');
+            const dashboard = document.getElementById('dashboard');
+            const statsGrid = document.getElementById('statsGrid');
+            const statusEl = document.getElementById('statStatus');
+            
+            // UI State updates
+            btn.querySelector('span').textContent = 'Simulating...';
+            btn.style.opacity = '0.8';
+            btn.style.pointerEvents = 'none';
+            loader.style.display = 'block';
+            dashboard.classList.remove('visible');
+            statsGrid.style.display = 'grid';
+            statusEl.textContent = 'Computing...';
+
+            try {
+                const response = await fetch('/simulate');
+                if (!response.ok) throw new Error('Simulation failed');
+                const data = await response.json();
+
+                document.getElementById('statMap').textContent = data.target_map;
+                statusEl.textContent = 'Complete';
+                statsGrid.style.display = 'grid';
+
+                renderCharts(data);
+                dashboard.classList.add('visible');
+
+            } catch (err) {
+                console.error(err);
+                alert("Error running simulation. Check server logs.");
+                statusEl.textContent = 'Failed';
+                statusEl.style.webkitTextFillColor = 'var(--accent-danger)';
+            } finally {
+                btn.querySelector('span').textContent = 'Re-Run Simulation';
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                loader.style.display = 'none';
+            }
+        }
+
+        function renderCharts(data) {
+            
+            if(mapChart) mapChart.destroy();
+            if(infusionChart) infusionChart.destroy();
+            if(concChart) concChart.destroy();
+
+            // 1. MAP
+            const mapCtx = document.getElementById('mapChart').getContext('2d');
+            mapChart = new Chart(mapCtx, {
+                type: 'line',
+                data: {
+                    labels: data.beat_times.map(t => t.toFixed(1)),
+                    datasets: [
+                        {
+                            label: 'Estimated MAP',
+                            data: data.map_beats,
+                            borderColor: '#00d2ff',
+                            backgroundColor: 'rgba(0, 210, 255, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#00d2ff',
+                            fill: true,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Target MAP',
+                            data: Array(data.beat_times.length).fill(data.target_map),
+                            borderColor: '#f0f0f5',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' }, grid: {display: false} },
+                        y: { title: { display: true, text: 'Pressure (mmHg)' } }
+                    },
+                    animation: { duration: 1500, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+
+            // 2. Infusion
+            const infCtx = document.getElementById('infusionChart').getContext('2d');
+            infusionChart = new Chart(infCtx, {
+                type: 'line',
+                data: {
+                    labels: data.time.map(t => t.toFixed(1)),
+                    datasets: [
+                        {
+                            label: 'Phenylephrine',
+                            data: data.u_phe,
+                            borderColor: '#ff4b4b',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            stepped: true
+                        },
+                        {
+                            label: 'Nicardipine',
+                            data: data.u_nic,
+                            borderColor: '#3a7bd5',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            stepped: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' }, grid: {display: false} },
+                        y: { title: { display: true, text: 'Infusion Rate' } }
+                    },
+                    animation: { duration: 1500, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+
+            // 3. Concentration
+            const concCtx = document.getElementById('concChart').getContext('2d');
+            concChart = new Chart(concCtx, {
+                type: 'line',
+                data: {
+                    labels: data.time.map(t => t.toFixed(1)),
+                    datasets: [
+                        {
+                            label: 'C1 Phenylephrine',
+                            data: data.c1_phe,
+                            borderColor: '#ff4b4b',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'C1 Nicardipine',
+                            data: data.c1_nic,
+                            borderColor: '#3a7bd5',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' }, grid: {display: false} },
+                        y: { title: { display: true, text: 'Concentration' } }
+                    },
+                    animation: { duration: 1500, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
