@@ -1,51 +1,56 @@
 import numpy as np
-from scipy.linalg import solve_discrete_are
+import cvxpy as cp
 from config import *
 
-
-def compute_lqr_gain(A, B, Q, R): # A & B computed via compute_state_space, Q & R from config
-
-    P = solve_discrete_are(A, B, Q, R)
-    K = np.linalg.inv(B.T @ P @ B + R) @ (B.T @ P @ A)
-
-    return K
-
-# Beat synchronous control function
-
-def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, K):
+# -----------------------------
+# Beat-Synchronous Constrained LQR Controller
+# -----------------------------
+def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, A, B, Q=None, R_lqr=None):
     """
-    Beat-synchronous LQR controller.
-    Runs ONCE per beat and returns infusion commands for that beat.
+    Beat-synchronous constrained LQR controller using a QP (CSV).
+    Solves for optimal infusion commands given current state-space matrices,
+    ensuring no negative infusion and proper allocation between drugs.
 
     Inputs:
-        C1_phe_k : phe concentration at the start of the beat
-        C1_nic_k : nic concentration at the start of the beat
-        MAP_k    : MAP for the completed beat
-        K        : LQR gain matrix
+        C1_phe_k, C1_nic_k    effect-site concentrations at beat start
+        MAP_k                 MAP for the completed beat
+        A, B                  discrete-time state-space matrices (from compute_state_space)
+        Q                     state cost matrix (optional, defaults to identity)
+        R_lqr                 control penalty matrix (optional, defaults to identity)
 
     Returns:
         u_phe_k, u_nic_k : infusion commands for the NEXT beat
     """
 
-    # Build state vector
-    x_k = np.array([
+    x = np.array([
         C1_phe_k,
         C1_nic_k,
         MAP_k
     ])
 
-    # Reference state
     x_ref = np.array([
         0.0,
         0.0,
         target_map
     ])
 
-    # LQR control law
-    u_k = -K @ (x_k - x_ref)
+    # --- Define QP ---
+    u = cp.Variable(2)  # two drug inputs
 
-    # Extract drug commands
-    u_phe_k = u_k[0]
-    u_nic_k = u_k[1]
+    # Predict next state with linearized dynamics
+    x_next = A @ x + B @ u
+
+    # Quadratic cost: minimize deviation from reference + control effort
+    cost = cp.quad_form(x_next - x_ref, Q) + cp.quad_form(u, R_lqr)
+
+    # Constraint: no negative infusion
+    constraints = [u >= 0]
+
+    # Solve QP
+    prob = cp.Problem(cp.Minimize(cost), constraints)
+    prob.solve(solver=cp.OSQP)
+
+    u_phe_k = u.value[0]
+    u_nic_k = u.value[1]
 
     return u_phe_k, u_nic_k

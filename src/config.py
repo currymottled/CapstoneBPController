@@ -6,35 +6,24 @@ fs = int(1/dt)              # sampling rate
 T  = 100                    # total sim time in seconds
 N  = int(T/dt)              # number of discrete time steps
 t  = np.arange(N) * dt      # time vector in seconds
+warmup_time = 20            # seconds
+warmup_steps = int(warmup_time / dt)
 
-# Control Parameters
-starting_map = 70 # initial mean arterial pressure
-target_map = 80   # target mean arterial pressure mmHg
-Q = np.diag([      # state penalty matrix
-    1.0,
-    1.0,
-    100.0
-])
-R_lqr = np.diag([  # control penalty matrix
-    0.1,
-    0.1
-])
-
-# Pump Parameters (input blood flow Qin)
+# Main cardiovascular parameters
 HR = 75/60                        # heart beats per second not minute
 SV = 70/1000                      # litres per heart beat
 beat_period = 1.0/HR              # seconds per heart beat including diastole
 sys_frac = 0.2                    # fraction of time heart is beating
 sys_time = beat_period * sys_frac # seconds of time heart is beating
-shape, scale = 3, sys_time/3   # gamma variable parameters for systole
+shape, scale = 3, sys_time/3      # gamma variable parameters for systole
 tau_d = 0.15 * beat_period        # diastolic decay time constant
 Qmean = SV / beat_period          # avg blow flow through cycle - tied to stroke volume
 
-# Cardiovascular (Windkessel) Parameters
-R0 = 1200  # Peripheral resistance, mmHg·s/L
-C = 1.5e-3  # Arterial compliance, L/mmHg
-Z = 0.05       # Aortal characteristic imperance, mmHg·s/L
-Pv = 5        # Background venous pressure, mmHg
+# Windkessel parameters
+R0 = 1200                         # peripheral resistance, mmHg·s/L
+C = 1.5e-3                        # arterial compliance, L/mmHg
+Z = 0.05                          # aortal characteristic imperance, mmHg·s/L
+Pv = 5                            # background venous pressure, mmHg
 
 # PK Parameters - Phenylephrine
 V1_phe, V2_phe = 10.0, 20.0   # L, central and peripheral volumes
@@ -48,9 +37,20 @@ k12_nic = 0.04                # rate central -> peripheral (1/s)
 k21_nic = 0.02                # rate peripheral -> central (1/s)
 
 # PD Parameters - Phenylephrine
-Emax_Rphe = 500
-EC50_Rphe = 1
+Emax_Rphe = 0.6 * R0    # Able to increase resistance by 50%
+EC50_Rphe = 1.5         # ug/L
 # PD Parameters - Nicardipine
-Emax_Rnic = -500
-EC50_Rnic = 1
+Emax_Rnic = -0.6 * R0   # Able to drop resistance by 50%
+EC50_Rnic = 1           # ug/L   
 
+# Control Parameters
+target_map = 95    # target mean arterial pressure mmHg
+Q = np.diag([      # state penalty matrix
+    0,
+    0,
+    1              # cost minimizer automatically normalizes so this number doesn't matter
+])
+R_lqr = np.diag([  # control penalty matrix
+    EC50_Rphe * 0.2,         # saturation is only non-linearity so all that matters R to EC50 ratios
+    EC50_Rnic * 0.2
+])
