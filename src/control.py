@@ -1,51 +1,41 @@
 import numpy as np
-from scipy.linalg import solve_discrete_are
+import cvxpy as cp
 from config import *
 
-
-def compute_lqr_gain(A, B, Q, R): # A & B computed via compute_state_space, Q & R from config
-
-    P = solve_discrete_are(A, B, Q, R)
-    K = np.linalg.inv(B.T @ P @ B + R) @ (B.T @ P @ A)
-
-    return K
-
-# Beat synchronous control function
-
-def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, K):
+# -----------------------------
+# Beat-Synchronous Constrained MPC Controller (fixed 5-step horizon)
+# -----------------------------
+def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, MAP_error_integral, A, B, Q, R_lqr):
     """
-    Beat-synchronous LQR controller.
-    Runs ONCE per beat and returns infusion commands for that beat.
-
-    Inputs:
-        C1_phe_k : phe concentration at the start of the beat
-        C1_nic_k : nic concentration at the start of the beat
-        MAP_k    : MAP for the completed beat
-        K        : LQR gain matrix
-
-    Returns:
-        u_phe_k, u_nic_k : infusion commands for the NEXT beat
+    Multi-step (5-beat horizon) constrained MPC for two-drug infusion with integral action.
+    Returns the first infusion command.
     """
 
-    # Build state vector
-    x_k = np.array([
-        C1_phe_k,
-        C1_nic_k,
-        MAP_k
-    ])
+    N = 5  # multi-step horizon so integral term isn't ignored
 
-    # Reference state
-    x_ref = np.array([
-        0.0,
-        0.0,
-        target_map
-    ])
+    # Current state
+    x0 = np.array([C1_phe_k, C1_nic_k, MAP_k, MAP_error_integral])
+    x_ref = np.array([0.0, 0.0, target_map, 0.0])
 
-    # LQR control law
-    u_k = -K @ (x_k - x_ref)
+    # Decision variables
+    x = cp.Variable((4, N+1))
+    u = cp.Variable((2, N))
+
+    constraints = [x[:,0] == x0]
+    cost = 0
+
+    for k in range(N):
+        # Dynamics constraint
+        constraints += [x[:,k+1] == A @ x[:,k] + B @ u[:,k]]
+        # No negative infusion
+        constraints += [u[:,k] >= 0]
+        # Quadratic cost
+        cost += cp.quad_form(x[:,k+1] - x_ref, Q) + cp.quad_form(u[:,k], R_lqr)
 
     # Extract drug commands (must be positive)
     u_phe_k = max(0.0, u_k[0])
     u_nic_k = max(0.0, u_k[1])
 
+    # Return only the first control action
+    u_phe_k, u_nic_k = u.value[:,0]
     return u_phe_k, u_nic_k

@@ -3,24 +3,13 @@ import numpy as np
 # Generic Simulation Parameters
 dt = 0.001                  # sim rate (1 kHz for smooth waveforms)
 fs = int(1/dt)              # sampling rate
-T  = 100                    # total sim time in seconds
+T  = 500                    # total sim time in seconds
 N  = int(T/dt)              # number of discrete time steps
 t  = np.arange(N) * dt      # time vector in seconds
+warmup_time = T * 0.2       # avoid transients
+warmup_steps = int(warmup_time / dt)
 
-# Control Parameters
-starting_map = 70 # initial mean arterial pressure
-target_map = 80   # target mean arterial pressure mmHg
-Q = np.diag([      # state penalty matrix
-    1.0,
-    1.0,
-    100.0
-])
-R_lqr = np.diag([  # control penalty matrix
-    0.1,
-    0.1
-])
-
-# Pump Parameters (input blood flow Qin)
+# Main cardiovascular parameters
 HR = 75/60                        # heart beats per second not minute
 SV = 70/1000                      # litres per heart beat
 beat_period = 1.0/HR              # seconds per heart beat including diastole
@@ -48,8 +37,8 @@ k12_nic = 0.04                # rate central -> peripheral (1/s)
 k21_nic = 0.02                # rate peripheral -> central (1/s)
 
 # PD Parameters - Phenylephrine
-Emax_Rphe = 500
-EC50_Rphe = 1
+Emax_Rphe = 0.5 * R0    # Able to increase resistance by 60%
+EC50_Rphe = 1.5         # ug/L
 # PD Parameters - Nicardipine
 Emax_Rnic = -500
 EC50_Rnic = 1
