@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin · BP Controller</title>
+    <meta name="description"
+        content="LQR-based blood pressure regulation digital twin for anaesthesia control simulation.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #08090d;
+            --bg-panel: #111318;
+            --bg-panel-hover: #181b22;
+            --bg-card: rgba(255, 255, 255, 0.025);
+            --text-primary: #eaedf2;
+            --text-secondary: #7a8194;
+            --accent-cyan: #00d4ff;
+            --accent-blue: #3a7bd5;
+            --accent-red: #ff4b5c;
+            --accent-green: #00e676;
+            --accent-orange: #ffa726;
+            --border: rgba(255, 255, 255, 0.06);
+            --glow-cyan: 0 0 30px rgba(0, 212, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            padding: 2.5rem 2rem 2rem;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(0, 212, 255, 0.04) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+        }
+
+        .logo {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.3rem;
+        }
+
+        .tagline {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        /* ── Container ── */
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ── Run Button ── */
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .run-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            color: #fff;
+            border: none;
+            padding: 1rem 3.5rem;
+            font-size: 1.15rem;
+            font-weight: 600;
+            font-family: inherit;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(.25, .8, .25, 1);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.25);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .run-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.45);
+        }
+
+        .run-btn:active {
+            transform: translateY(0);
+        }
+
+        .run-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Stats ── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        .stat:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .stat-value.cyan {
+            color: var(--accent-cyan);
+        }
+
+        .stat-value.green {
+            color: var(--accent-green);
+        }
+
+        .stat-value.orange {
+            color: var(--accent-orange);
+        }
+
+        .stat-value.blue {
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 6px;
+        }
+
+        /* ── Dashboard Grid ── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            opacity: 0;
+            transform: translateY(25px);
+            transition: opacity 0.7s, transform 0.7s;
+        }
+
+        .dashboard.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media(min-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .panel.span {
+                grid-column: 1 / -1;
+            }
+        }
+
+        /* ── Panel ── */
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+
+        .panel:hover {
+            background: var(--bg-panel-hover);
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+        }
+
+        .panel.accent-cyan::before {
+            background: linear-gradient(90deg, var(--accent-cyan), transparent);
+        }
+
+        .panel.accent-red::before {
+            background: linear-gradient(90deg, var(--accent-red), transparent);
+        }
+
+        .panel.accent-blue::before {
+            background: linear-gradient(90deg, var(--accent-blue), transparent);
+        }
+
+        .panel.accent-green::before {
+            background: linear-gradient(90deg, var(--accent-green), transparent);
+        }
+
+        .panel h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel h2 .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.cyan {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .dot.red {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+
+        .dot.blue {
+            background: var(--accent-blue);
+            box-shadow: 0 0 8px var(--accent-blue);
+        }
+
+        .dot.green {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        .chart-wrap.tall {
+            height: 380px;
+        }
+
+        /* ── Hidden until sim runs ── */
+        .hidden {
+            display: none !important;
+        }
+
+        /* ── Footer ── */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">LQR Digital Twin</div>
+        <p class="tagline">Closed-Loop Blood Pressure Regulation · Windkessel + Pharmacokinetic Model</p>
+    </header>
+
+    <div class="container">
+
+        <!-- Run Button -->
+        <div class="controls">
+            <button class="run-btn" id="runBtn" onclick="runSim()">
+                <span id="btnText">Run Simulation</span>
+                <div class="spinner" id="spinner"></div>
+            </button>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats hidden" id="stats">
+            <div class="stat">
+                <div class="stat-value cyan" id="sTarget">--</div>
+                <div class="stat-label">Target MAP</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value green" id="sSteady">--</div>
+                <div class="stat-label">Steady MAP</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value orange" id="sBP">--</div>
+                <div class="stat-label">SBP / DBP</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value red" id="sPP" style="color: var(--accent-red)">--</div>
+                <div class="stat-label">Pulse Pressure</div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard" id="dash">
+
+            <!-- 1. Aortic Pressure Waveform -->
+            <div class="panel span accent-green">
+                <h2><span class="dot green"></span>Aortic Pressure Waveform</h2>
+                <div class="chart-wrap tall">
+                    <canvas id="waveChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. MAP Regulation -->
+            <div class="panel accent-cyan">
+                <h2><span class="dot cyan"></span>Beat-Averaged MAP</h2>
+                <div class="chart-wrap">
+                    <canvas id="mapChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 3. Hemodynamic Trends (SBP/DBP) -->
+            <div class="panel accent-orange">
+                <h2><span class="dot orange"></span>Hemodynamic Trends (SBP/DBP)</h2>
+                <div class="chart-wrap">
+                    <canvas id="hemoChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 4. Drug Infusion -->
+            <div class="panel accent-red">
+                <h2><span class="dot red"></span>Drug Infusion Commands</h2>
+                <div class="chart-wrap">
+                    <canvas id="infChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 5. Concentrations -->
+            <div class="panel accent-blue">
+                <h2><span class="dot blue"></span>Effect-Site Concentrations</h2>
+                <div class="chart-wrap">
+                    <canvas id="concChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        Capstone BP Controller &middot; Three-Element Windkessel &middot; LQR Feedback Control
+    </footer>
+
+    <script>
+        /* ── Chart.js Defaults ── */
+        Chart.defaults.color = '#7a8194';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.font.size = 12;
+        Chart.defaults.scale.grid.color = 'rgba(255,255,255,0.04)';
+
+        let charts = {};
+
+        async function runSim() {
+            const btn = document.getElementById('runBtn');
+            const text = document.getElementById('btnText');
+            const spin = document.getElementById('spinner');
+            const dash = document.getElementById('dash');
+            const statDiv = document.getElementById('stats');
+
+            btn.disabled = true;
+            text.textContent = 'Computing…';
+            spin.style.display = 'block';
+            dash.classList.remove('visible');
+            statDiv.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/simulate');
+                const d = await res.json();
+                if (!res.ok || d.error) throw new Error(d.error || 'Server error');
+
+                // Stats
+                document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
+                const lastMAPs = d.map_beats.slice(-10);
+                const steadyMAP = (lastMAPs.reduce((a, b) => a + b, 0) / lastMAPs.length).toFixed(1);
+                document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
+
+                const lastSBP = d.hemo_sbp[d.hemo_sbp.length - 1];
+                const lastDBP = d.hemo_dbp[d.hemo_dbp.length - 1];
+                const lastPP = d.hemo_pp[d.hemo_pp.length - 1];
+                document.getElementById('sBP').textContent = Math.round(lastSBP) + ' / ' + Math.round(lastDBP);
+                document.getElementById('sPP').textContent = Math.round(lastPP) + ' mmHg';
+
+                renderAll(d);
+                dash.classList.add('visible');
+
+            } catch (e) {
+                console.error(e);
+                alert("Simulation Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                text.textContent = 'Re-Run Simulation';
+                spin.style.display = 'none';
+            }
+        }
+
+        function destroyAll() {
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+        }
+
+        /* ── Helper: thin labels so x-axis isn't crowded ── */
+        function thinLabels(arr, maxTicks) {
+            const step = Math.max(1, Math.floor(arr.length / maxTicks));
+            return arr.map((v, i) => i % step === 0 ? v : '');
+        }
+
+        function renderAll(d) {
+            destroyAll();
+
+            /* 1. Pressure Waveform (Annotated) */
+            // Find feature points in the last beat shown
+            const waveData = d.wave_pin;
+            const waveT = d.wave_time;
+            const n_pts = waveData.length;
+            const lastBeatStartIdx = Math.floor(n_pts * 0.7); // heuristic to catch last beat
+            let peakVal = 0, peakIdx = 0, troughVal = 500, troughIdx = 0;
+
+            for (let i = lastBeatStartIdx; i < n_pts; i++) {
+                if (waveData[i] > peakVal) { peakVal = waveData[i]; peakIdx = i; }
+                if (waveData[i] < troughVal) { troughVal = waveData[i]; troughIdx = i; }
+            }
+            // Notch is usually ~0.3s after peak
+            const notchIdx = Math.min(peakIdx + Math.floor(0.3 / (waveT[1] - waveT[0])) || 0, n_pts - 1);
+            const notchVal = waveData[notchIdx] + 2; // offset for visibility
+
+            charts.wave = new Chart(document.getElementById('waveChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(waveT.map(v => v.toFixed(2)), 20),
+                    datasets: [{
+                        label: 'Aortic Pressure (Pin)',
+                        data: d.wave_pin,
+                        borderColor: '#00e676',
+                        backgroundColor: 'rgba(0,230,118,0.06)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.1
+                    }, {
+                        label: 'Capacitor Pressure (P)',
+                        data: d.wave_p,
+                        borderColor: 'rgba(0,212,255,0.5)',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        fill: false
+                    }]
+                },
+                options: {
+                    ...chartOpts('Time (s)', 'Pressure (mmHg)', true),
+                    plugins: {
+                        ...chartOpts().plugins,
+                        annotation: {
+                            annotations: {
+                                sLine: { type: 'line', yMin: peakVal, yMax: peakVal, borderColor: '#ff4b5c', borderDash: [6, 6], borderWidth: 1, label: { display: true, content: 'Systolic: ' + Math.round(peakVal), position: 'start', backgroundColor: '#ff4b5c', color: '#fff', font: { size: 10 } } },
+                                dLine: { type: 'line', yMin: troughVal, yMax: troughVal, borderColor: '#00d4ff', borderDash: [6, 6], borderWidth: 1, label: { display: true, content: 'Diastolic: ' + Math.round(troughVal), position: 'start', backgroundColor: '#00d4ff', color: '#fff', font: { size: 10 } } },
+                                notchMark: { type: 'label', xValue: peakIdx + (notchIdx - peakIdx) * 0.5, yValue: peakVal + 5, content: '← Dicrotic Notch', color: '#ffa726', font: { weight: 'bold', size: 11 } }
+                            }
+                        }
+                    }
+                }
+            });
+
+            /* 2. Beat MAP */
+            charts.map = new Chart(document.getElementById('mapChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(d.beat_times.map(v => v.toFixed(1)), 25),
+                    datasets: [{
+                        label: 'Estimated MAP',
+                        data: d.map_beats,
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0,212,255,0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.25
+                    }, {
+                        label: 'Target MAP',
+                        data: Array(d.beat_times.length).fill(d.target_map),
+                        borderColor: 'rgba(255,255,255,0.3)',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0
+                    }]
+                },
+                options: chartOpts('Time (s)', 'MAP (mmHg)')
+            });
+
+            /* 3. Hemodynamics Trend (SBP/DBP) */
+            charts.hemo = new Chart(document.getElementById('hemoChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(d.hemo_times.map(v => v.toFixed(1)), 25),
+                    datasets: [{
+                        label: 'SBP',
+                        data: d.hemo_sbp,
+                        borderColor: '#ff4b5c',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2
+                    }, {
+                        label: 'DBP',
+                        data: d.hemo_dbp,
+                        borderColor: '#00d4ff',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2
+                    }]
+                },
+                options: chartOpts('Time (s)', 'Pressure Envelopes')
+            });
+
+            /* 4. Infusion */
+            charts.inf = new Chart(document.getElementById('infChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(d.time.map(v => v.toFixed(1)), 15),
+                    datasets: [{
+                        label: 'Phenylephrine',
+                        data: d.u_phe,
+                        borderColor: '#ff4b5c',
+                        borderWidth: 2,
+                        stepped: true
+                    }, {
+                        label: 'Nicardipine',
+                        data: d.u_nic,
+                        borderColor: '#3a7bd5',
+                        borderWidth: 2,
+                        stepped: true
+                    }]
+                },
+                options: chartOpts('Time (s)', 'Drug Infusion')
+            });
+
+            /* 5. Concentration */
+            charts.conc = new Chart(document.getElementById('concChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(d.time.map(v => v.toFixed(1)), 15),
+                    datasets: [{
+                        label: 'C₁ Phenylephrine',
+                        data: d.c1_phe,
+                        borderColor: '#ff4b5c',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }, {
+                        label: 'C₁ Nicardipine',
+                        data: d.c1_nic,
+                        borderColor: '#3a7bd5',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: chartOpts('Time (s)', 'Tissue Conc')
+            });
+        }
+
+        function chartOpts(xLabel, yLabel, bigAnimation) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                animation: { duration: bigAnimation ? 1800 : 1200, easing: 'easeOutQuart' },
+                scales: {
+                    x: { title: { display: !!xLabel, text: xLabel || '' }, grid: { display: false } },
+                    y: { title: { display: !!yLabel, text: yLabel || '' } }
+                },
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12, usePointStyle: true } } }
+            };
+        }
+    </script>
+</body>
+
+</html>
+```

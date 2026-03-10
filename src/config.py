@@ -1,7 +1,7 @@
 import numpy as np
 
 # Generic Simulation Parameters
-dt = 0.05                   # sim rate
+dt = 0.001                  # sim rate (1 kHz for smooth waveforms)
 fs = int(1/dt)              # sampling rate
 T  = 500                    # total sim time in seconds
 N  = int(T/dt)              # number of discrete time steps
@@ -13,17 +13,17 @@ warmup_steps = int(warmup_time / dt)
 HR = 75/60                        # heart beats per second not minute
 SV = 70/1000                      # litres per heart beat
 beat_period = 1.0/HR              # seconds per heart beat including diastole
-sys_frac = 0.2                    # fraction of time heart is beating
-sys_time = beat_period * sys_frac # seconds of time heart is beating
-shape, scale = 3, sys_time/3      # gamma variable parameters for systole
+sys_frac = 0.35                   # fraction of beat that is systole (~35%)
+sys_time = beat_period * sys_frac # seconds of systolic ejection
+shape, scale = 2.5, sys_time/5   # gamma variable parameters for systole
 tau_d = 0.15 * beat_period        # diastolic decay time constant
 Qmean = SV / beat_period          # avg blow flow through cycle - tied to stroke volume
 
-# Windkessel parameters
-R0 = 1e3                          # peripheral resistance, mmHg·s/L
-C = 1.5e-3                        # arterial compliance, L/mmHg
-Z = 0.05                          # aortal characteristic imperance, mmHg·s/L
-Pv = 5                            # background venous pressure, mmHg
+# Cardiovascular (Windkessel) Parameters
+R0 = 1100  # Peripheral resistance, mmHg·s/L
+C = 1.0e-3  # Arterial compliance, L/mmHg
+Z = 50       # Aortal characteristic impedance, mmHg·s/L
+Pv = 5        # Background venous pressure, mmHg
 
 # PK Parameters - Phenylephrine
 V1_phe, V2_phe = 10.0, 20.0   # L, central and peripheral volumes
@@ -40,18 +40,5 @@ k21_nic = 0.02                # rate peripheral -> central (1/s)
 Emax_Rphe = 0.5 * R0    # Able to increase resistance by 60%
 EC50_Rphe = 1.5         # ug/L
 # PD Parameters - Nicardipine
-Emax_Rnic = -0.5 * R0   # Able to drop resistance by 60%
-EC50_Rnic = 1           # ug/L   
-
-# Control Parameters
-target_map = 95    # target mean arterial pressure mmHg
-Q = np.diag([      # state penalty matrix
-    0,
-    0,
-    1,               
-    1            # the 'integral term' should be small
-])
-R_lqr = np.diag([  # control penalty matrix
-    EC50_Rphe * 2, # base infusion penalty on potency
-    EC50_Rnic * 2
-])
+Emax_Rnic = -500
+EC50_Rnic = 1
